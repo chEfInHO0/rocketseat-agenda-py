@@ -7,16 +7,29 @@
 # 7. Criar funcionalidade para apagar um contato
 from string import digits
 from os import system
-
+import re
 
 class Agenda:
-    def __init__(self, testing=False):
+    def __init__(self):
         self.contatos = list()
-        self.testing = testing
+        self.preserve_state(preserve='', state='clear')
 
-    def dups(self, name):
+    def preserve_state(self, preserve:str, state:str):
+        if state == 'clear':
+            self.__preserve_name = None
+            self.__preserve_number = None
+            self.__preserve_email = None
+        else:
+            if preserve == 'name':
+                self.__preserve_name = state
+            elif preserve == 'number':
+                self.__preserve_number = state
+            elif preserve == 'email':
+                self.__preserve_email = state
+
+    def dups(self,key, value):
         for c in self.contatos:
-            if c.get(name):
+            if c.get(key) == value:
                 return True
         return False
 
@@ -34,13 +47,13 @@ class Agenda:
         else:
             return None
 
-    def pretty_print(self, msg):
-        print("#"*20)
-        print(msg)
-        print("#"*20)
+    def pretty_print(self, msg:str):
+        print("#"*40)
+        print(msg.center(40))
+        print("#"*40)
 
-    def show_format(self, contato, number):
-        print(f"{contato} - {self.format_number(number)}".rjust(35, " "))
+    def show_format(self, contato, number, email):
+        print(f"{contato} - {self.format_number(number)} - {email}".center(35))
 
     def sanitize(self, stdout):
         _accept = list(digits)
@@ -49,40 +62,88 @@ class Agenda:
                 stdout = stdout.replace(i, '')
         return stdout
 
+    def check_email(self, email:str):
+        EMAIL_REGEX = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if len(email) > 254:
+            print(f"❌ E-mail muito longo: {email}")
+            return '',401
+            
+        if re.fullmatch(EMAIL_REGEX, email):
+            return email,200  
+        else:
+            print(f"❌ o email {email} é inválido")
+            return '',401
+
+    def request_name(self):
+        if self.__preserve_name is None:
+            name = str(input('Nome do Contato: ')) or ''
+            if len(name) < 3 or self.dups('name',name):
+                if name == '':
+                    print("\n### Cadastro abortado ###\n")
+                    return '',400
+                elif self.dups('name',name):
+                    print("O nome já está cadastrado na agenda")
+                    return '',401
+                else:
+                    print("O nome deve ter pelo menos 3 caracteres")
+                    return '',401
+            else:
+                self.preserve_state('name',name)
+                return name,200
+        else:
+            return self.__preserve_name,200
+        
+    def request_number(self):
+        if self.__preserve_number is None:
+            number = self.sanitize(str(input('Numero do Contato: ')) or '')
+            if len(number) < 10 or len(number) > 11:
+                if number == '':
+                    print("\n### Cadastro abortado ###\n")
+                    return '',400
+                else:
+                    print("O numero deve ter pelo menos 10 e no máximo 11 dígitos")
+                    return '',401
+            else:
+                self.preserve_state('number',number)
+                return number,200
+        else:
+            return self.__preserve_number,200
+
+    def request_email(self):
+        if self.__preserve_email is None:
+            email, email_status = self.check_email(str(input('Email do Contato: ')).strip()) or ''
+            if email_status == 200:
+                for c in self.contatos:
+                    if self.dups('email',email):
+                        return '',401
+                self.preserve_state('email',email)
+                return email,200  
+            return '',401
+        else:
+            return self.__preserve_email,200
+
     def add(self):
-        contact = dict()
         info = dict()
 
-        name = str(input('Nome do Contato: ')).capitalize() or ''
-
-        while len(name) < 3 or self.dups(name):
-            if name == '':
-                print("\n### Cadastro abortado ###\n")
-                return 400
-            elif self.dups(name):
-                print("O nome já está cadastrado na agenda")
-                return 401
-            else:
-                print("O nome deve ter pelo menos 3 caracteres")
-            name = str(input('Nome do Contato: ')).capitalize() or ''
-
-        number = self.sanitize(str(input('Numero do Contato: ')) or '')
-
-        while len(number) < 10 or len(number) > 11:
-            if number == '':
-                print("\n### Cadastro abortado ###\n")
-                return 400
-            print("O numero deve ter pelo menos 10 e no máximo 11 dígitos")
-            number = self.sanitize(
-                str(input('Numero do Contato: ')) or '')
-
+        name,name_status = self.request_name()
+        if name_status != 200:
+            return 401
+        
+        number,number_status = self.request_number()
+        if number_status != 200:
+            return 401
+        email, email_status = self.request_email()
+        if email_status != 200:
+            return 401
         is_favorite = False
-
+        
+        info['name'] = name
         info['number'] = number
+        info['email'] = email
         info['favorite'] = is_favorite
-        contact[name] = info
-        self.contatos.append(contact)
+        self.contatos.append(info)
         print('\n### Contato adicionado ###\n')
+        self.preserve_state('','clear')
         return 201
 
     def show(self, filtered=False):
@@ -95,12 +156,11 @@ class Agenda:
         self.pretty_print("Lista de Contatos Favoritos : ") if filtered else self.pretty_print(
             "Lista de Contatos : ")
         for c in self.contatos:
-            for k, v in c.items():
-                if filtered:
-                    if v.get('favorite'):
-                        self.show_format(k, v.get('number'))
-                else:
-                    self.show_format(k, v.get('number'))
+            if filtered:
+                if c.get('favorite'):
+                    self.show_format(c.get('name'), c.get('number'), c.get('email'))
+            else:
+                self.show_format(c.get('name'), c.get('number'), c.get('email'))
         input("Pressione ENTER para continuar")
         system('cls')
         return 200
@@ -111,10 +171,9 @@ class Agenda:
             return 412
         else:
             try:
-                print(self.contatos)
                 for c in self.contatos:
-                    if c.get(name):
-                        print(name, c.get(name))
+                    if c.get('name') == name:
+                        print(c.get('name'), c.get('number'), c.get('email') )
                         return 200
                 return 404
             except Exception:
@@ -124,25 +183,28 @@ class Agenda:
         if self.is_empty():
             print("\n### Agenda ainda está vazia ###\n")
             return 412
-        name = str(input('Nome do Contato: ')).capitalize() or ''
-        while name == '' or len(name) < 3:
-            name = str(input('Nome do Contato: ')).capitalize() or ''
+        name,name_status = self.request_name()
+        if name_status != 200:
+            return 401
         for c in self.contatos:
-            if c.get(name):
+            if c.get('name') == name:
                 if update_type == 'number':
-                    number = str(input('Numero do Contato: ')) or ''
-                    while len(number) < 9 or number == c.get(name).get('number'):
-                        if number == '':
-                            print("\n### Atualização abortada ###\n")
-                            return 400
-                        number = str(input('Numero do Contato: ')) or ''
-                    c.get(name).update({'number': number})
-                    print(f"O contato {c.get(name)} foi atualizado")
+                    number,number_status = self.request_number()
+                    if number_status != 200:
+                        return 401
+                    c.update({'number': number})
+                    print(f"O contato {name} foi atualizado")
+                elif update_type == 'email':
+                    email,email_status = self.request_email()
+                    if email_status != 200:
+                        return 401
+                    c.update({'email': email})
+                    print(f"O contato {name} foi atualizado")
                 else:
-                    c.get(name).update(
-                        {'favorite': not c.get(name).get('favorite')})
-                    print(f"O contato {c.get(name)} foi adicionado aos favoritos") if c.get(name).get(
-                        'favorite') else print(f"O contato {c.get(name)} foi removido dos favoritos")
+                    c.update(
+                        {'favorite': not c.get('favorite')})
+                    print(f"O contato {name} foi adicionado aos favoritos") if c.get(
+                        'favorite') else print(f"O contato {name} foi removido dos favoritos")
                 return 204
         print("\n### Nome não encontrado na lista ###\n")
         return 404
@@ -159,6 +221,7 @@ class Agenda:
             name = str(input('Nome do Contato: ')).capitalize() or ''
         for c in self.contatos:
             if c.get(name):
+                self.contatos.remove({name : c.get(name)})
                 return 204
         print("\n### Nome não encontrado na lista ###\n")
         return 404
@@ -168,23 +231,24 @@ class Agenda:
         exit()
 
 
-agenda = Agenda(True)
+agenda = Agenda()
 
-if not agenda.testing:
-    loop = True
-    while loop:
-        try:
-            op = -1
-            while op not in ['1', '2', '3', '4', '5', '6', '0']:
-                print("\n 1 - Adicionar Contato \n 2 - Listar Contatos \n 3 - Atualizar Contato\n 4 - (Des)Favoritar Contato\n 5 - Listar contatos Favoritos\n 6 - Deletar Contato\n 0 - Sair\n")
-                op = str(input("Selecione uma ação : "))
-            action = {
-                "1": (agenda.add,), "2": (agenda.show,),
-                "3": (agenda.update,), "4": (agenda.update, 'favorite'),
-                "5": (agenda.show, True), "0": (agenda.close,)}
-            f = action.get(op)
-            f[0](f[1])
-        except KeyboardInterrupt:
-            agenda.close()
-        except IndexError:
-            f[0]()
+
+loop = True
+while loop:
+    try:
+        op = -1
+        while op not in ['1', '2', '3', '4', '5', '6', '0']:
+            print("\n 1 - Adicionar Contato \n 2 - Listar Contatos \n 3 - Atualizar Contato\n 4 - (Des)Favoritar Contato\n 5 - Listar contatos Favoritos\n 6 - Deletar Contato\n 0 - Sair\n")
+            op = str(input("Selecione uma ação : "))
+        action = {
+            "1": (agenda.add,), "2": (agenda.show,),
+            "3": (agenda.update,), "4": (agenda.update, 'favorite'),
+            "5": (agenda.show, True), "6" : (agenda.delete,),
+              "0": (agenda.close,)}
+        f = action.get(op)
+        f[0](f[1])
+    except KeyboardInterrupt:
+        agenda.close()
+    except IndexError:
+        f[0]()
