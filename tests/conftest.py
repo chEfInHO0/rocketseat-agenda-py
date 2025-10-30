@@ -33,3 +33,17 @@ CASES_FAIL = [
         ("Teste B", "12312"),
         ("Teste C", "dsadwvc"),
     ]
+
+
+CASES_UPDATE_SUCCESS = [
+    ("Teste A", "11111111111"),
+    ("Teste B", "01010101011")
+]
+CASES_UPDATE_FAIL = [
+    ("","32112312332"),
+    ("Teste c","12332")
+]
+
+
+CASES_DELETE_SUCCESS = []
+CASES_DELETE_FAIL = []
