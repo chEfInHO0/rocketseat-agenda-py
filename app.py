@@ -268,15 +268,15 @@ class Agenda:
 
 print("\nPara rodar os testes, a variavel 'testing' deve ser alterada para True\n")
    
-agenda = Agenda(testing=True) # <-------# AQUI #---------
+agenda = Agenda(testing=False) # <-------# AQUI #---------
 
 if not agenda.testing:
     loop = True
     while loop:
         try:
             op = -1
-            while op not in ['1', '2', '3', '4', '5', '6', '0']:
-                print("\n 1 - Adicionar Contato \n 2 - Listar Contatos \n 3 - Atualizar Contato\n 4 - (Des)Favoritar Contato\n 5 - Listar contatos Favoritos\n 6 - Deletar Contato\n 0 - Sair\n")
+            while op not in ['1', '2', '3', '4', '5', '6','7', '0']:
+                print("\n 1 - Adicionar Contato \n 2 - Listar Contatos \n 3 - Atualizar Numero\n 4 - (Des)Favoritar Contato\n 5 - Listar contatos Favoritos\n 6 - Deletar Contato\n 7 - Atualizar Email\n 0 - Sair\n")
                 try:
                     op = str(input("Selecione uma ação : "))[0]
                 except IndexError:
@@ -285,7 +285,7 @@ if not agenda.testing:
                 "1": (agenda.add,None), "2": (agenda.show,None),
                 "3": (agenda.update,None), "4": (agenda.update, 'favorite'),
                 "5": (agenda.show, True), "6" : (agenda.delete,None),
-                "0": (agenda.close,None)}
+                "7": (agenda.update, 'email'), "0": (agenda.close,None)}
             f = action.get(op)
             if f[1] is not None:
                 f[0](f[1])
