@@ -10,9 +10,10 @@ from os import system
 import re
 
 class Agenda:
-    def __init__(self):
+    def __init__(self, testing=False):
         self.contatos = list()
-        self.preserve_state(preserve='', state='clear')
+        self.reset_state()
+        self.testing = testing
 
     def reset_state(self):
         self.__preserve_name = None
@@ -238,6 +239,7 @@ class Agenda:
                         {'favorite': not c.get('favorite')})
                     self.pretty_print(f"O contato {name} foi adicionado aos favoritos") if c.get(
                         'favorite') else self.pretty_print(f"O contato {name} foi removido dos favoritos")
+                self.reset_state()
                 return 204
         print("\n### Nome não encontrado na lista ###\n")
         return 404
@@ -247,12 +249,9 @@ class Agenda:
             print("\n### Agenda ainda está vazia ###\n")
             return 412
         self.pretty_print("Deletar contato")
-        name = str(input('Nome do Contato: ')).capitalize() or ''
-        while len(name) < 3:
-            if name == '':
-                print("\n### Ação abortada ###\n")
-                return 400
-            name = str(input('Nome do Contato: ')).capitalize() or ''
+        name,name_status = self.request_name(update=True)
+        if name_status != 200:
+            return 401
         for c in self.contatos:
             if c.get('name') == name:
                 self.contatos.remove(c)
@@ -267,28 +266,30 @@ class Agenda:
 
 
 
-agenda = Agenda()
+print("\nPara rodar os testes, a variavel 'testing' deve ser alterada para True\n")
+   
+agenda = Agenda(testing=True) # <-------# AQUI #---------
 
-
-loop = True
-while loop:
-    try:
-        op = -1
-        while op not in ['1', '2', '3', '4', '5', '6', '0']:
-            print("\n 1 - Adicionar Contato \n 2 - Listar Contatos \n 3 - Atualizar Contato\n 4 - (Des)Favoritar Contato\n 5 - Listar contatos Favoritos\n 6 - Deletar Contato\n 0 - Sair\n")
-            try:
-                op = str(input("Selecione uma ação : "))[0]
-            except IndexError:
-                op = '-1'
-        action = {
-            "1": (agenda.add,None), "2": (agenda.show,None),
-            "3": (agenda.update,None), "4": (agenda.update, 'favorite'),
-            "5": (agenda.show, True), "6" : (agenda.delete,None),
-              "0": (agenda.close,None)}
-        f = action.get(op)
-        if f[1] is not None:
-            f[0](f[1])
-        else:
-            f[0]()
-    except KeyboardInterrupt:
-        agenda.close()
+if not agenda.testing:
+    loop = True
+    while loop:
+        try:
+            op = -1
+            while op not in ['1', '2', '3', '4', '5', '6', '0']:
+                print("\n 1 - Adicionar Contato \n 2 - Listar Contatos \n 3 - Atualizar Contato\n 4 - (Des)Favoritar Contato\n 5 - Listar contatos Favoritos\n 6 - Deletar Contato\n 0 - Sair\n")
+                try:
+                    op = str(input("Selecione uma ação : "))[0]
+                except IndexError:
+                    op = '-1'
+            action = {
+                "1": (agenda.add,None), "2": (agenda.show,None),
+                "3": (agenda.update,None), "4": (agenda.update, 'favorite'),
+                "5": (agenda.show, True), "6" : (agenda.delete,None),
+                "0": (agenda.close,None)}
+            f = action.get(op)
+            if f[1] is not None:
+                f[0](f[1])
+            else:
+                f[0]()
+        except KeyboardInterrupt:
+            agenda.close()
